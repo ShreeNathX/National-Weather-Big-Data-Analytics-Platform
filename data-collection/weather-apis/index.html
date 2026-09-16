@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>National Weather Big Data & Disaster Verification Platform</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card: #151f32;
+      --border: #24324d;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --green: #10b981;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --blue: #38bdf8;
+      --purple: #a855f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 20px; min-height: 100vh; }
+    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    h1 { font-size: 1.3rem; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    select, button, input, textarea { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; font-size: 0.85rem; }
+    button { background: #0284c7; border: none; cursor: pointer; font-weight: 600; transition: opacity .2s; }
+    button:hover { opacity: 0.9; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .source-name { font-weight: 700; font-size: 0.88rem; }
+    .badge { font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 999px; text-transform: uppercase; }
+    .badge.connected { background: rgba(16, 185, 129, 0.15); color: var(--green); border: 1px solid var(--green); }
+    .badge.not_connected { background: rgba(239, 68, 68, 0.15); color: var(--red); border: 1px solid var(--red); }
+    .badge.verified { background: rgba(16, 185, 129, 0.2); color: var(--green); border: 1px solid var(--green); }
+    .badge.suspicious { background: rgba(239, 68, 68, 0.2); color: var(--red); border: 1px solid var(--red); }
+
+    .metric-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.82rem; }
+    .metric-val { font-weight: 600; color: #fff; }
+    .metric-val.highlight { color: var(--blue); font-weight: 700; }
+    .error-box { background: rgba(239, 68, 68, 0.1); border: 1px dashed var(--red); color: #fca5a5; padding: 8px; border-radius: 6px; font-size: 0.78rem; margin-top: 6px; }
+
+    /* Verification Section */
+    .verification-section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+    .section-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 12px; color: #fff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    
+    /* Hashtag pills */
+    .hashtag-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .tag-btn { background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: var(--blue); padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+    .tag-btn:hover, .tag-btn.active { background: var(--blue); color: #04101e; }
+
+    .tester-box { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 16px; }
+    @media(max-width: 768px) { .tester-box { grid-template-columns: 1fr; } }
+    .sample-btns { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .sample-btn { background: rgba(255,255,255,0.06); border: 1px solid var(--border); font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; color: var(--muted); cursor: pointer; }
+    .sample-btn:hover { color: #fff; border-color: var(--blue); }
+
+    .report-list { display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; }
+    .report-card { background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+    .report-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; }
+    .report-text { font-size: 0.88rem; margin-bottom: 8px; color: #f1f5f9; }
+    .report-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .tag { background: rgba(56, 189, 248, 0.15); color: var(--blue); padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
+    .verification-banner { padding: 8px 10px; border-radius: 5px; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
+    .verification-banner.verified { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #a7f3d0; }
+    .verification-banner.suspicious { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
+
+    table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 0.82rem; margin-top: 14px; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: #1a2742; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>🇮🇳 National Weather Big Data & Disaster Verification Platform</h1>
+      <p style="color: var(--muted); font-size: 0.8rem;">100% Free Live Telemetry (Satellites, GloFAS River Flow, Marine Waves) + Multi-Platform Social Fake Report Verification</p>
+    </div>
+    <div class="controls">
+      <select id="stateSelect"></select>
+      <button id="fetchBtn">Fetch Live Telemetry</button>
+    </div>
+  </header>
+
+  <!-- 1. Live Weather & Disaster Telemetry Grid (6 100% Free Active APIs) -->
+  <div class="grid" id="apiCards"></div>
+
+  <!-- 2. Multi-Source Social Media & Citizen Weather Verification Engine -->
+  <section class="verification-section">
+    <div class="section-title">
+      <span>🛰️ Social Media & Citizen Reports Stream (#IMD, #MumbaiRains, #Flood)</span>
+      <span style="font-size: 0.75rem; color: var(--muted);">Multi-network Ingestion (Mastodon, Mstdn, Citizen Reports)</span>
+    </div>
+
+    <!-- Hashtag Quick Filter Buttons -->
+    <div class="hashtag-bar" id="tagBar"></div>
+
+    <div class="tester-box">
+      <div>
+        <textarea id="customPostText" rows="2" style="width: 100%; resize: none;" placeholder="Submit or test a citizen report (e.g. Severe waterlogging and street flood #IMD #Flood in Guwahati)..."></textarea>
+        <div class="sample-btns">
+          <span style="font-size: 0.75rem; color: var(--muted); align-self: center;">Test Presets:</span>
+          <button class="sample-btn" data-cat="Flooding" data-text="Severe flash flood and waterlogging in streets #IMD #Flood">🌧️ Flood Claim</button>
+          <button class="sample-btn" data-cat="Cyclone" data-text="Terrifying cyclone wind gusts damaging hoardings #IMD #Cyclone">💨 Cyclone Claim</button>
+          <button class="sample-btn" data-cat="Heatwave" data-text="Unbearable deadly 46C heatwave condition outside #IMD #Heatwave">☀️ Heatwave Claim</button>
+        </div>
+      </div>
+      <div>
+        <select id="reportCategory" style="width: 100%; margin-bottom: 8px;">
+          <option value="Flooding">Event: Flooding</option>
+          <option value="Rainfall">Event: Rainfall</option>
+          <option value="Cyclone">Event: Cyclone / High Wind</option>
+          <option value="Heatwave">Event: Heatwave</option>
+        </select>
+        <button id="verifyBtn" style="width: 100%; background: #059669; padding: 8px;">Verify Report Against Live Telemetry</button>
+      </div>
+    </div>
+
+    <!-- Verified Reports Feed -->
+    <div class="report-list" id="reportsFeed"></div>
+  </section>
+
+  <!-- 3. Telemetry Matrix -->
+  <h2 style="font-size: 1rem; margin-bottom: 8px; color: #fff;">Live Telemetry Cross-Verification Matrix</h2>
+  <div style="overflow-x: auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th>Status</th>
+          <th>🌧️ Rain (mm)</th>
+          <th>🌊 River (m³/s)</th>
+          <th>🌊 Waves (m)</th>
+          <th>💨 Gust (km/h)</th>
+          <th>🌡️ Temp (°C)</th>
+          <th>Baro (hPa)</th>
+          <th>Verification Stream</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <script type="module">
+    import { INDIA_STATES, WEATHER_TAGS, fetchAllWeather, fetchMultiSourceSocialPosts, verifyReport } from './adapters.js';
+    import { createSocialReportRecord } from './schema.js';
+
+    const select = document.getElementById('stateSelect');
+    const cardsEl = document.getElementById('apiCards');
+    const tbody = document.getElementById('tableBody');
+    const fetchBtn = document.getElementById('fetchBtn');
+    const reportsFeed = document.getElementById('reportsFeed');
+    const customText = document.getElementById('customPostText');
+    const reportCategory = document.getElementById('reportCategory');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const tagBar = document.getElementById('tagBar');
+
+    let currentTelemetry = [];
+    let reports = [];
+    let currentTag = 'IMD';
+
+    // Populate states
+    INDIA_STATES.forEach((loc, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = `${loc.state} - ${loc.city}`;
+      select.appendChild(opt);
+    });
+
+    // Populate Hashtag Filter Buttons
+    WEATHER_TAGS.forEach(tag => {
+      const btn = document.createElement('button');
+      btn.className = `tag-btn ${tag === currentTag ? 'active' : ''}`;
+      btn.textContent = `#${tag}`;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentTag = tag;
+        loadSocialPosts(tag);
+      });
+      tagBar.appendChild(btn);
+    });
+
+    // Preset button clicks
+    document.querySelectorAll('.sample-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const loc = INDIA_STATES[select.value];
+        customText.value = `${btn.dataset.text} in ${loc.city}`;
+        reportCategory.value = btn.dataset.cat;
+      });
+    });
+
+    async function loadTelemetry() {
+      fetchBtn.disabled = true;
+      fetchBtn.textContent = 'Fetching...';
+      const loc = INDIA_STATES[select.value];
+
+      cardsEl.innerHTML = '<p style="color: var(--muted); font-size: 0.85rem;">Connecting live to 6 independent APIs (cache:no-store)...</p>';
+      tbody.innerHTML = '';
+
+      currentTelemetry = await fetchAllWeather(loc);
+
+      cardsEl.innerHTML = '';
+      currentTelemetry.forEach(rec => {
+        const isOk = rec.status === 'connected';
+        const d = rec.disaster_metrics || {};
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-header">
+            <span class="source-name">${rec.source}</span>
+            <span class="badge ${rec.status}">${isOk ? 'CONNECTED' : 'NOT CONNECTED'}</span>
+          </div>
+          ${isOk ? `
+            <div class="metric-row"><span>🌧️ Rainfall:</span><span class="metric-val ${d.rain_mm > 0 ? 'highlight' : ''}">${d.rain_mm != null ? d.rain_mm + ' mm' : '-'}</span></div>
+            <div class="metric-row"><span>🌊 River Flow:</span><span class="metric-val ${d.river_discharge_m3s ? 'highlight' : ''}">${d.river_discharge_m3s != null ? d.river_discharge_m3s + ' m³/s' : '-'}</span></div>
+            <div class="metric-row"><span>🌊 Wave Surge:</span><span class="metric-val">${d.wave_height_m != null ? d.wave_height_m + ' m' : (rec.condition || '-')}</span></div>
+            <div class="metric-row"><span>💨 Wind Gust:</span><span class="metric-val">${d.wind_gust_kmh != null ? d.wind_gust_kmh + ' km/h' : '-'}</span></div>
+            <div class="metric-row"><span>🌡️ Temperature:</span><span class="metric-val">${d.temp_c != null ? d.temp_c + ' °C' : '-'}</span></div>
+            <div class="metric-row"><span>Pressure:</span><span class="metric-val">${d.pressure_hpa != null ? d.pressure_hpa + ' hPa' : '-'}</span></div>
+          ` : `
+            <div class="error-box">⚠️ ${rec.error}</div>
+            <p style="color: var(--muted); font-size: 0.75rem; margin-top: 5px;">Isolated: other feeds active.</p>
+          `}
+        `;
+        cardsEl.appendChild(card);
+
+        // Matrix row
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${rec.source}</strong></td>
+          <td><span class="badge ${rec.status}">${isOk ? 'CONNECTED' : 'NOT CONNECTED'}</span></td>
+          <td>${d.rain_mm != null ? d.rain_mm + ' mm' : '-'}</td>
+          <td>${d.river_discharge_m3s != null ? d.river_discharge_m3s + ' m³/s' : '-'}</td>
+          <td>${d.wave_height_m != null ? d.wave_height_m + ' m' : '-'}</td>
+          <td>${d.wind_gust_kmh != null ? d.wind_gust_kmh + ' km/h' : '-'}</td>
+          <td>${d.temp_c != null ? d.temp_c + ' °C' : '-'}</td>
+          <td>${d.pressure_hpa != null ? d.pressure_hpa + ' hPa' : '-'}</td>
+          <td>${isOk ? '✅ Live Telemetry Stream' : `<span style="color: var(--red);">${rec.error}</span>`}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = 'Fetch Live Telemetry';
+
+      // Re-verify existing reports with new telemetry
+      reports.forEach(rep => {
+        rep.verification = verifyReport(rep, currentTelemetry);
+      });
+      renderReports();
+    }
+
+    function renderReports() {
+      reportsFeed.innerHTML = '';
+      if (reports.length === 0) {
+        reportsFeed.innerHTML = '<p style="color: var(--muted); font-size: 0.8rem;">No recent posts found for this hashtag. Select another tag or test a custom claim above!</p>';
+        return;
+      }
+      reports.forEach(rep => {
+        const v = rep.verification || {};
+        const isVerified = v.status === 'VERIFIED';
+        const card = document.createElement('div');
+        card.className = 'report-card';
+        card.innerHTML = `
+          <div class="report-meta">
+            <span><strong>${rep.author}</strong> via ${rep.source}</span>
+            <span>📍 ${rep.location?.city || 'India'} • ${new Date(rep.timestamp).toLocaleTimeString()}</span>
+          </div>
+          <div class="report-text">"${rep.text}"</div>
+          <div class="report-tags">
+            ${rep.hashtags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+            <span class="tag" style="background: rgba(168, 85, 247, 0.15); color: var(--purple);">${rep.category}</span>
+          </div>
+          <div class="verification-banner ${isVerified ? 'verified' : 'suspicious'}">
+            <div>
+              <strong>${isVerified ? '🟢 VERIFIED REPORT' : '🔴 SUSPICIOUS / FAKE REPORT'}</strong>
+              <span style="margin-left: 8px; opacity: 0.85;">(${v.confidence}% confidence)</span>
+              <div style="font-size: 0.75rem; margin-top: 3px;">${v.reason}</div>
+            </div>
+          </div>
+        `;
+        reportsFeed.appendChild(card);
+      });
+    }
+
+    async function loadSocialPosts(tag) {
+      reportsFeed.innerHTML = `<p style="color: var(--muted); font-size: 0.8rem;">Querying multi-network social feeds for #${tag}...</p>`;
+      const loc = INDIA_STATES[select.value];
+      const livePosts = await fetchMultiSourceSocialPosts(tag);
+      livePosts.forEach(p => {
+        p.location = loc;
+        p.verification = verifyReport(p, currentTelemetry);
+      });
+      reports = livePosts;
+      renderReports();
+    }
+
+    verifyBtn.addEventListener('click', () => {
+      const text = customText.value.trim();
+      if (!text) return alert('Please enter report text or select a preset.');
+      const loc = INDIA_STATES[select.value];
+      const tags = (text.match(/#[a-z0-9_]+/gi) || ['#IMD', '#Weather']);
+      
+      const newReport = createSocialReportRecord({
+        source: 'Citizen Emergency Reporter',
+        author: '@citizen_alert',
+        text,
+        hashtags: tags,
+        category: reportCategory.value,
+        location: loc,
+        verification: verifyReport({ text, hashtags: tags, category: reportCategory.value, location: loc }, currentTelemetry)
+      });
+
+      reports.unshift(newReport);
+      renderReports();
+      customText.value = '';
+    });
+
+    select.addEventListener('change', () => {
+      loadTelemetry();
+    });
+    fetchBtn.addEventListener('click', loadTelemetry);
+
+    // Initial run
+    (async () => {
+      await loadTelemetry();
+      await loadSocialPosts(currentTag);
+    })();
+  </script>
+</body>
+</html>
