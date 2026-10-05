@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="National Weather Big Data Analytics Platform — Prototype with full pipeline: Data Collection, Preprocessing, Enrich & Verify, Serving & Alerting, Consumers.">
+  <title>🇮🇳 NWBDAP — National Weather Big Data Analytics Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet">
+  <style>
+    /* ── Design Tokens ── */
+    :root {
+      --bg: #060d1a;
+      --bg2: #0c1628;
+      --surface: #111d33;
+      --surface2: #172140;
+      --border: #1e3054;
+      --border2: #263d62;
+      --text: #e2ecff;
+      --muted: #7a96c4;
+      --dim: #3d5478;
+      --green: #22d3a4;
+      --green-dim: rgba(34, 211, 164, .12);
+      --red: #f04a5e;
+      --red-dim: rgba(240, 74, 94, .12);
+      --amber: #ffb347;
+      --amber-dim: rgba(255, 179, 71, .12);
+      --blue: #4db8ff;
+      --blue-dim: rgba(77, 184, 255, .12);
+      --purple: #b47bff;
+      --purple-dim: rgba(180, 123, 255, .12);
+      --cyan: #39e5d0;
+      --gold: #ffd166;
+      --crit: #ff3b5c;
+      --crit-dim: rgba(255, 59, 92, .15);
+      --grad1: linear-gradient(135deg, #0e2240 0%, #060d1a 100%);
+      --glow: 0 0 40px rgba(77, 184, 255, .08);
+    }
+
+    /* ── Reset & Base ── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg2);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 3px;
+    }
+
+    /* ── Layout ── */
+    .app-shell {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      grid-template-rows: 56px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── Top Nav ── */
+    .topnav {
+      grid-column: 1 / -1;
+      background: rgba(6, 13, 26, .9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #fff;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #1a4fd6, #38bdf8);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .brand-sub {
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: var(--muted);
+      display: block;
+    }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: .5;
+        transform: scale(0.8);
+      }
+    }
+
+    .nav-clock {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      padding: 16px 0;
+      position: sticky;
+      top: 56px;
+      height: calc(100vh - 56px);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      padding: 12px 16px 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 16px;
+      cursor: pointer;
+      border-radius: 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 500;
+      border-left: 3px solid transparent;
+      transition: all .2s;
+    }
+
+    .nav-item:hover {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .nav-item.active {
+      background: var(--surface);
+      color: var(--blue);
+      border-left-color: var(--blue);
+    }
+
+    .nav-icon {
+      font-size: 15px;
+      width: 20px;
+      text-align: center;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .version-tag {
+      font-size: 0.68rem;
+      color: var(--dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Main Content ── */
+    .main-content {
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    /* ── Pages ── */
+    .page {
+      display: none;
+      padding: 20px;
+      animation: fadeIn .3s ease;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* ── Section headers ── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .page-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .page-sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── Pipeline Stage Banner ── */
+    .pipeline-bar {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .pipe-stage {
+      flex: 1;
+      padding: 10px 14px;
+      text-align: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background: var(--surface);
+      color: var(--muted);
+      border-right: 1px solid var(--border);
+      position: relative;
+      transition: all .3s;
+    }
+
+    .pipe-stage:last-child {
+      border-right: none;
+    }
+
+    .pipe-stage .pipe-label {
+      display: block;
+      font-size: 0.62rem;
+      font-weight: 400;
+      margin-top: 2px;
+      color: var(--dim);
+    }
+
+    .pipe-stage.active {
+      background: var(--blue-dim);
+      color: var(--blue);
+    }
+
+    .pipe-stage.done {
+      background: var(--green-dim);
+      color: var(--green);
+    }
+
+    .pipe-stage.error {
+      background: var(--red-dim);
+      color: var(--red);
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .card-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── Grid Layouts ── */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .grid-4-stat {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Stat Cards ── */
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent, var(--blue));
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--accent, var(--blue));
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-sub {
+      font-size: 0.7rem;
+      color: var(--dim);
+    }
+
+    /* ── Badges ── */
+    .badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .badge.connected {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(34, 211, 164, .3);
+    }
+
+    .badge.not_connected {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(240, 74, 94, .3);
+    }
+
+    .badge.pending {
+      background: var(--amber-dim);
+      color: var(--amber);
+      border: 1px solid rgba(255, 179, 71, .3);
+    }
+
+    .badge.low {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(34, 211, 164, .3);
+    }
+
+    .badge.moderate {
+      background: var(--amber-dim);
+      color: var(--amber);
+      border: 1px solid rgba(255, 179, 71, .3);
+    }
+
+    .badge.high {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(240, 74, 94, .3);
+    }
+
+    .badge.critical {
+      background: var(--crit-dim);
+      color: var(--crit);
+      border: 1px solid rgba(255, 59, 92, .4);
+      animation: critPulse 1.5s infinite;
+    }
+
+    @keyframes critPulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .6
+      }
+    }
+
+    .badge.verified {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(34, 211, 164, .3);
+    }
+
+    .badge.suspicious {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(240, 74, 94, .3);
+    }
+
+    .badge.bronze {
+      background: rgba(180, 100, 50, .15);
+      color: #cd7f32;
+      border: 1px solid rgba(205, 127, 50, .3);
+    }
+
+    .badge.silver {
+      background: rgba(150, 160, 180, .15);
+      color: #aab5c8;
+      border: 1px solid rgba(170, 181, 200, .3);
+    }
+
+    .badge.gold {
+      background: rgba(255, 209, 102, .12);
+      color: var(--gold);
+      border: 1px solid rgba(255, 209, 102, .3);
+    }
+
+    /* ── Metric rows ── */
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, .04);
+      font-size: 0.8rem;
+    }
+
+    .metric-row:last-child {
+      border-bottom: none;
+    }
+
+    .metric-label {
+      color: var(--muted);
+    }
+
+    .metric-val {
+      font-weight: 600;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+    }
+
+    .metric-val.hi {
+      color: var(--blue);
+    }
+
+    .metric-val.warn {
+      color: var(--amber);
+    }
+
+    .metric-val.crit {
+      color: var(--crit);
+    }
+
+    /* ── Controls ── */
+    select,
+    button,
+    input,
+    textarea {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 0.82rem;
+      font-family: 'Inter', sans-serif;
+      transition: border-color .2s;
+    }
+
+    select:focus,
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+      transition: all .2s;
+    }
+
+    button:hover {
+      filter: brightness(1.1);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #1a4fd6, #38bdf8);
+      border: none;
+      color: #fff;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #0d9488, #22d3a4);
+      border: none;
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #f04a5e);
+      border: none;
+      color: #fff;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    /* ── Alert items ── */
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border: 1px solid;
+      animation: slideIn .3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    .alert-item.CRITICAL {
+      background: var(--crit-dim);
+      border-color: rgba(255, 59, 92, .3);
+    }
+
+    .alert-item.HIGH {
+      background: var(--red-dim);
+      border-color: rgba(240, 74, 94, .25);
+    }
+
+    .alert-item.MODERATE {
+      background: var(--amber-dim);
+      border-color: rgba(255, 179, 71, .25);
+    }
+
+    .alert-item.LOW {
+      background: var(--green-dim);
+      border-color: rgba(34, 211, 164, .2);
+    }
+
+    .alert-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .alert-body {
+      flex: 1;
+    }
+
+    .alert-title {
+      font-weight: 700;
+      font-size: 0.82rem;
+      color: #fff;
+    }
+
+    .alert-desc {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .alert-time {
+      font-size: 0.68rem;
+      color: var(--dim);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 3px;
+    }
+
+    /* ── Log / Pipeline trace ── */
+    .log-panel {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .log-line {
+      padding: 2px 0;
+    }
+
+    .log-line .ls-ingest {
+      color: var(--blue);
+    }
+
+    .log-line .ls-preprocess {
+      color: var(--amber);
+    }
+
+    .log-line .ls-enrich {
+      color: var(--purple);
+    }
+
+    .log-line .ls-complete {
+      color: var(--green);
+    }
+
+    /* ── Report cards ── */
+    .report-card {
+      background: rgba(0, 0, 0, .2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      animation: slideIn .3s ease;
+    }
+
+    .report-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .report-text {
+      font-size: 0.85rem;
+      color: #f1f5f9;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .tag-chip {
+      background: var(--blue-dim);
+      color: var(--blue);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .cat-chip {
+      background: var(--purple-dim);
+      color: var(--purple);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .verify-banner {
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .verify-banner.VERIFIED {
+      background: var(--green-dim);
+      border: 1px solid rgba(34, 211, 164, .25);
+    }
+
+    .verify-banner.SUSPICIOUS_FAKE {
+      background: var(--red-dim);
+      border: 1px solid rgba(240, 74, 94, .25);
+    }
+
+    .verify-banner.PENDING {
+      background: var(--amber-dim);
+      border: 1px solid rgba(255, 179, 71, .25);
+    }
+
+    .verify-banner-left {
+      font-size: 0.78rem;
+    }
+
+    .verify-confidence {
+      font-weight: 800;
+      font-size: 0.82rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Gold summary card ── */
+    .gold-card {
+      background: linear-gradient(135deg, rgba(255, 209, 102, .06), rgba(180, 123, 255, .04));
+      border: 1px solid rgba(255, 209, 102, .2);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gold-card::before {
+      content: 'GOLD';
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: .15em;
+      color: var(--gold);
+      opacity: .4;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .gold-city {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .gold-state {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .gold-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .gold-metric {
+      background: rgba(0, 0, 0, .2);
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .gold-metric-val {
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--gold);
+    }
+
+    .gold-metric-lbl {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── Hashtag pills ── */
+    .tag-bar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .tag-pill {
+      background: var(--blue-dim);
+      border: 1px solid rgba(77, 184, 255, .25);
+      color: var(--blue);
+      padding: 4px 11px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .tag-pill:hover,
+    .tag-pill.active {
+      background: var(--blue);
+      color: #04101e;
+    }
+
+    /* ── Table ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    .data-table th {
+      background: var(--surface2);
+      color: var(--muted);
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, .04);
+      color: var(--text);
+    }
+
+    .data-table tr:hover td {
+      background: var(--surface2);
+    }
+
+    .data-table td.mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.74rem;
+    }
+
+    /* ── Severity bar ── */
+    .sev-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sev-pip {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--dim);
+    }
+
+    .sev-pip.on {
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    .sev-pip.low.on {
+      background: var(--green);
+      color: var(--green);
+    }
+
+    .sev-pip.mod.on {
+      background: var(--amber);
+      color: var(--amber);
+    }
+
+    .sev-pip.high.on {
+      background: var(--red);
+      color: var(--red);
+    }
+
+    .sev-pip.crit.on {
+      background: var(--crit);
+      color: var(--crit);
+      animation: critPulse 1s infinite;
+    }
+
+    /* ── Error box ── */
+    .err-box {
+      background: var(--red-dim);
+      border: 1px dashed var(--red);
+      color: #fca5a5;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      margin-top: 6px;
+    }
+
+    /* ── Consumer views ── */
+    .consumer-header {
+      background: linear-gradient(135deg, var(--surface2), var(--surface));
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .consumer-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .consumer-role {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(77, 184, 255, .2);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    /* ── Responsive ── */
+    @media(max-width:768px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: fixed;
+        left: -220px;
+        top: 56px;
+        height: calc(100vh - 56px);
+        z-index: 200;
+        transition: left .3s;
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      .main-content {
+        grid-column: 1;
+      }
+
+      .pipeline-bar {
+        flex-direction: column;
+      }
+    }
+
+    /* ── Citizen Reporter form ── */
+    .citizen-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    @media(max-width:600px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 500;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .sample-preset {
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid var(--border);
+      font-size: 0.72rem;
+      padding: 4px 9px;
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .sample-preset:hover {
+      color: #fff;
+      border-color: var(--blue);
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .empty-state .empty-icon {
+      font-size: 36px;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    /* ── Tooltip ── */
+    [title] {
+      cursor: help;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="app-shell">
+
+    <!-- ── Top Nav ── -->
+    <nav class="topnav">
+      <div class="brand">
+        <div class="brand-logo">🌩</div>
+        <div>
+          <span>NWBDAP</span>
+          <span class="brand-sub">National Weather Big Data Analytics Platform — Prototype</span>
+        </div>
+      </div>
+      <div class="nav-status">
+        <div class="live-dot" title="Live pipeline active"></div>
+        <span style="font-size:0.72rem;color:var(--muted);">LIVE</span>
+        <span class="nav-clock" id="navClock"></span>
+      </div>
+    </nav>
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-label">Pipeline Layers</div>
+
+      <div class="nav-item active" data-page="overview" id="nav-overview">
+        <span class="nav-icon">🗺</span> Overview
+      </div>
+
+      <div class="sidebar-label">Collection</div>
+      <div class="nav-item" data-page="collection" id="nav-collection">
+        <span class="nav-icon">📡</span> Data Collection
+      </div>
+      <div class="nav-item" data-page="social" id="nav-social">
+        <span class="nav-icon">#</span> Social Media
+      </div>
+      <div class="nav-item" data-page="citizen" id="nav-citizen">
+        <span class="nav-icon">📸</span> Citizen Reporter
+      </div>
+
+      <div class="sidebar-label">Processing</div>
+      <div class="nav-item" data-page="ingestion" id="nav-ingestion">
+        <span class="nav-icon">🔄</span> Ingestion Buffer
+      </div>
+      <div class="nav-item" data-page="preprocessing" id="nav-preprocessing">
+        <span class="nav-icon">⚙️</span> Preprocessing
+      </div>
+      <div class="nav-item" data-page="enrich" id="nav-enrich">
+        <span class="nav-icon">🔬</span> Enrich &amp; Verify
+      </div>
+
+      <div class="sidebar-label">Serving</div>
+      <div class="nav-item" data-page="alerts" id="nav-alerts">
+        <span class="nav-icon">🚨</span> Alerting
+      </div>
+      <div class="nav-item" data-page="analyst" id="nav-analyst">
+        <span class="nav-icon">📊</span> Analyst Console
+      </div>
+
+      <div class="sidebar-label">Consumers</div>
+      <div class="nav-item" data-page="emergency" id="nav-emergency">
+        <span class="nav-icon">🚒</span> Emergency Agency
+      </div>
+      <div class="nav-item" data-page="admin" id="nav-admin">
+        <span class="nav-icon">🛡</span> Admin
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="version-tag">v1.0-prototype</div>
+        <div class="version-tag" style="margin-top:2px;color:var(--dim);">SIH 2024</div>
+      </div>
+    </aside>
+
+    <!-- ── Main Content ── -->
+    <main class="main-content">
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Overview
+    ══════════════════════════════════════════════ -->
+      <div class="page active" id="page-overview">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">🗺 Platform Overview</h1>
+            <div class="page-sub">Full pipeline status — real-time, rule-based, no AWS, no NLP/ML</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <select id="globalStateSelect" style="min-width:220px;"></select>
+            <button class="btn-primary" id="globalFetchBtn" style="padding:8px 18px;">▶ Run Pipeline</button>
+          </div>
+        </div>
+
+        <!-- Pipeline progress bar -->
+        <div class="pipeline-bar" id="pipelineBar">
+          <div class="pipe-stage" id="ps-collect">📡 Collect<span class="pipe-label">Weather APIs</span></div>
+          <div class="pipe-stage" id="ps-ingest">🔄 Ingest<span class="pipe-label">Stream Buffer</span></div>
+          <div class="pipe-stage" id="ps-bronze">🟤 Bronze<span class="pipe-label">Raw Store</span></div>
+          <div class="pipe-stage" id="ps-silver">⚪ Silver<span class="pipe-label">Clean + Normalise</span></div>
+          <div class="pipe-stage" id="ps-enrich">🔬 Enrich<span class="pipe-label">Verify &amp; Score</span></div>
+          <div class="pipe-stage" id="ps-gold">🟡 Gold<span class="pipe-label">Aggregates</span></div>
+          <div class="pipe-stage" id="ps-serve">🚨 Serve<span class="pipe-label">Alerts + API</span></div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="grid-4-stat" id="overviewStats">
+          <div class="stat-card" style="--accent:var(--blue)">
+            <div class="stat-label">APIs Connected</div>
+            <div class="stat-value" id="ov-apis">—</div>
+            <div class="stat-sub">of 6 sources</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--amber)">
+            <div class="stat-label">Bronze Records</div>
+            <div class="stat-value" id="ov-bronze">—</div>
+            <div class="stat-sub">ingested raw</div>
+          </div>
+          <div class="stat-card" style="--accent:#aab5c8">
+            <div class="stat-label">Silver Records</div>
+            <div class="stat-value" id="ov-silver">—</div>
+            <div class="stat-sub">cleaned</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--gold)">
+            <div class="stat-label">Gold Records</div>
+            <div class="stat-value" id="ov-gold">—</div>
+            <div class="stat-sub">aggregated</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--red)">
+            <div class="stat-label">Active Alerts</div>
+            <div class="stat-value" id="ov-alerts">—</div>
+            <div class="stat-sub">across all cities</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--green)">
+            <div class="stat-label">Verified Reports</div>
+            <div class="stat-value" id="ov-verified">—</div>
+            <div class="stat-sub">citizen + social</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--purple)">
+            <div class="stat-label">Severity</div>
+            <div class="stat-value" id="ov-severity" style="font-size:1rem;margin-top:4px;">—</div>
+            <div class="stat-sub">current location</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--cyan)">
+            <div class="stat-label">Last Run</div>
+            <div class="stat-value" id="ov-time" style="font-size:0.85rem;margin-top:8px;">—</div>
+            <div class="stat-sub">pipeline timestamp</div>
+          </div>
+        </div>
+
+        <!-- Gold summary cards -->
+        <h2
+          style="font-size:0.88rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">
+          🟡 Gold Layer — Aggregated Output</h2>
+        <div id="goldSummaryArea">
+          <div class="empty-state"><span class="empty-icon">🌐</span>Select a location and run the pipeline to see
+            aggregated gold layer data.</div>
+        </div>
+
+        <!-- Pipeline log -->
+        <h2
+          style="font-size:0.88rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:16px;">
+          📋 Pipeline Execution Log</h2>
+        <div class="log-panel" id="pipelineLog">Awaiting pipeline run…</div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Data Collection (Weather APIs)
+    ══════════════════════════════════════════════ -->
+      <div class="page" id="page-collection">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">📡 Data Collection — Weather APIs</h1>
+            <div class="page-sub">6 free live telemetry sources: Open-Meteo, GloFAS, Marine, wttr.in, MET Norway, AQI
+            </div>
+          </div>
+        </div>
+        <div class="grid-3" id="apiCards">
+          <div class="empty-state" style="grid-column:1/-1"><span class="empty-icon">📡</span>Run the pipeline from
+            Overview to fetch live data.</div>
+        </div>
+        <h2
+          style="font-size:0.88rem;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">
+          Live Telemetry Cross-Verification Matrix</h2>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Status</th>
+                <th>🌧 Rain mm</th>
+                <th>🌊 River m³/s</th>
+                <th>🌊 Wave m</th>
+                <th>💨 Gust km/h</th>
+                <th>🌡 Temp °C</th>
+                <th>🔽 Press hPa</th>
+                <th>AQI</th>
+              </tr>
+            </thead>
+            <tbody id="matrixBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Social Media
+    ══════════════════════════════════════════════ -->
+      <div class="page" id="page-social">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title"># Social Media Stream</h1>
+            <div class="page-sub">Mastodon public API — real-time weather/disaster hashtag monitoring</div>
+          </div>
+          <button class="btn-primary" id="loadSocialBtn" style="padding:8px 16px;">🔄 Refresh Feed</button>
+        </div>
+        <div class="tag-bar" id="socialTagBar"></div>
+        <div id="socialFeed">
+          <div class="empty-state"><span class="empty-icon">#</span>Select a hashtag to load live social feed.</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Citizen Reporter
+    ══════════════════════════════════════════════ -->
+      <div class="page" id="page-citizen">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">📸 Citizen Reporter</h1>
+            <div class="page-sub">Submit field observations — cross-verified against live telemetry</div>
+          </div>
+        </div>
+        <div class="citizen-form">
+          <div class="card-title" style="margin-bottom:12px;">📝 Submit a Field Report</div>
+          <div>
+            <label for="citizenText">Observation / Report Text</label>
+            <textarea id="citizenText"
+              placeholder="e.g. Severe waterlogging and flash flood in streets #IMD #Flood in Guwahati..."></textarea>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+              <span style="font-size:0.72rem;color:var(--muted);align-self:center;">Presets:</span>
+              <button class="sample-preset" data-cat="Flooding"
+                data-text="Severe flash flood and waterlogging in streets #IMD #Flood">🌧 Flood Claim</button>
+              <button class="sample-preset" data-cat="Cyclone"
+                data-text="Terrifying cyclone wind gusts damaging hoardings #Cyclone #IMD">💨 Cyclone Claim</button>
+              <button class="sample-preset" data-cat="Heatwave"
+                data-text="Unbearable 46°C deadly heatwave outside #Heatwave #IMD">☀ Heatwave Claim</button>
+              <button class="sample-preset" data-cat="Rainfall"
+                data-text="Heavy rainfall and thunderstorm ongoing #monsoon #IMD">🌩 Rainfall Claim</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label for="citizenCategory">Event Category</label>
+              <select id="citizenCategory" style="width:100%;">
+                <option value="Flooding">🌊 Flooding</option>
+                <option value="Rainfall">🌧 Rainfall</option>
+                <option value="Cyclone">💨 Cyclone / High Wind</option>
+                <option value="Heatwave">☀ Heatwave</option>
+              </select>
+            </div>
+            <div>
+              <label for="citizenLocation">Location (auto from selection)</label>
+              <input id="citizenLocation" type="text" readonly style="width:100%;"
+                placeholder="Run pipeline to set location">
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <button class="btn-success" id="submitCitizenBtn" style="padding:9px 20px;">✅ Submit &amp; Verify
+              Report</button>
+          </div>
+        </div>
+        <h2
+          style="font-size:0.88rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">
+          📋 Citizen Report Feed</h2>
+        <div id="citizenFeed">
+          <div class="empty-state"><span class="empty-icon">📸</span>No citizen reports submitted yet. Use the form
+            above.</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Ingestion Buffer
+    ══════════════════════════════════════════════ -->
+      <div class="page" id="page-ingestion">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">🔄 Ingestion Buffer</h1>
+            <div class="page-sub">In-memory stream buffer (simulated Kafka) — Bronze layer raw event store</div>
+          </div>
+        </div>
+        <div class="grid-4-stat" id="bufferStats">
+          <div class="stat-card" style="--accent:var(--blue)">
+            <div class="stat-label">Weather Events</div>
+            <div class="stat-value" id="buf-weather">0</div>
+            <div class="stat-sub">ingested</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--purple)">
+            <div class="stat-label">Social Events</div>
+            <div class="stat-value" id="buf-social">0</div>
+            <div class="stat-sub">ingested</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--amber)">
+            <div class="stat-label">Total Bronze</div>
+            <div class="stat-value" id="buf-total">0</div>
+            <div class="stat-sub">raw records</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--red)">
+            <div class="stat-label">Errors</div>
+            <div class="stat-value" id="buf-errors">0</div>
+            <div class="stat-sub">failed ingestion</div>
+          </div>
+        </div>
+        <h2
+          style="font-size:0.88rem;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">
+          🟤 Bronze Records (Raw)</h2>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="bronzeTable">
+            <thead>
+              <tr>
+                <th>Bronze ID</th>
+                <th>Source Type</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Ingested At</th>
+                <th>Layer</th>
+              </tr>
+            </thead>
+            <tbody id="bronzeBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Preprocessing (Silver)
+    ══════════════════════════════════════════════ -->
+      <div class="page" id="page-preprocessing">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">⚙️ Preprocessing — Silver Layer</h1>
+            <div class="page-sub">Validates, clamps out-of-range values, normalises and sanitises all records</div>
+          </div>
+        </div>
+        <div class="grid-4-stat">
+          <div class="stat-card" style="--accent:#aab5c8">
+            <div class="stat-label">Silver Weather</div>
+            <div class="stat-value" id="sil-weather">0</div>
+            <div class="stat-sub">cleaned records</div>
+          </div>
+          <div class="stat-card" style="--accent:#aab5c8">
+            <div class="stat-label">Silver Social</div>
+            <div class="stat-value" id="sil-social">0</div>
+            <div class="stat-sub">cleaned records</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--green)">
+            <div class="stat-label">Pass Rate</div>
+            <div class="stat-value" id="sil-pass">—</div>
+            <div class="stat-sub">normalised ok</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--amber)">
+            <div class="stat-label">Null-filled</div>
+            <div class="stat-value" id="sil-nulls">—</div>
+            <div class="stat-sub">fields clamped/fixed</div>
+          </div>
+        </div>
+        <h2
+          style="font-size:0.88rem;font-weight:600;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">
+          ⚪ Silver Records (Cleaned)</h2>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Silver ID</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>🌧 Rain mm</th>
+                <th>🌊 River m³/s</th>
+                <th>💨 Gust km/h</th>
+                <th>🌡 Temp °C</th>
+                <th>Processed At</th>
+                <th>Layer</th>
+              </tr>
+            </thead>
+            <tbody id="silverBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Enrich & Verify (Gold)
+    ══════════════════════════════════════════════ -->
+      <div class="page" id="page-enrich">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">🔬 Enrich &amp; Verify</h1>
+            <div class="page-sub">Rule-based cross-verification of social reports against live telemetry → Gold layer
+              aggregates</div>
+          </div>
+        </div>
+        <div id="enrichGoldCards">
+          <div class="empty-state"><span class="empty-icon">🔬</span>Run the pipeline to see enriched gold records.
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Alerting
+    ══════════════════════════════════════════════ -->
+      <div class="page" id="page-alerts">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">🚨 Serving &amp; Alerting</h1>
+            <div class="page-sub">Rule-based alert engine — severity-scored, no SNS/AWS, GitHub Pages hosted</div>
+          </div>
+          <button class="btn-ghost" id="clearAlertsBtn" style="font-size:0.78rem;padding:6px 12px;">🗑 Clear</button>
+        </div>
+        <div class="grid-4-stat" id="alertStats">
+          <div class="stat-card" style="--accent:var(--crit)">
+            <div class="stat-label">CRITICAL</div>
+            <div class="stat-value" id="al-crit">0</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--red)">
+            <div class="stat-label">HIGH</div>
+            <div class="stat-value" id="al-high">0</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--amber)">
+            <div class="stat-label">MODERATE</div>
+            <div class="stat-value" id="al-mod">0</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--green)">
+            <div class="stat-label">LOW / CLEAR</div>
+            <div class="stat-value" id="al-low">0</div>
+          </div>
+        </div>
+        <div id="alertFeed">
+          <div class="empty-state"><span class="empty-icon">🚨</span>No alerts generated yet. Run the pipeline.</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Analyst Console
+    ══════════════════════════════════════════════ -->
+      <div class="page" id="page-analyst">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">📊 Analyst Console</h1>
+            <div class="page-sub">Full data view — all layers, all metrics, exportable JSON</div>
+          </div>
+          <button class="btn-ghost" id="exportBtn" style="font-size:0.78rem;padding:6px 12px;">⬇ Export JSON</button>
+        </div>
+        <div class="grid-2" id="analystPanels">
+          <div class="card">
+            <div class="card-header"><span class="card-title">📊 Telemetry Summary</span></div>
+            <div id="analystTelemetry">
+              <div class="empty-state" style="padding:20px 0">Run pipeline first</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">📋 Social Report Stats</span></div>
+            <div id="analystSocial">
+              <div class="empty-state" style="padding:20px 0">Run pipeline first</div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:0">
+          <div class="card-header"><span class="card-title">🟡 Gold Records — Full View</span></div>
+          <div id="analystGold">
+            <div class="empty-state" style="padding:20px 0">Run pipeline first</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Emergency Response Agency
+    ══════════════════════════════════════════════ -->
+      <div class="page" id="page-emergency">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">🚒 Emergency Response Agency</h1>
+            <div class="page-sub">Operational view — CRITICAL and HIGH severity alerts, verified citizen reports</div>
+          </div>
+        </div>
+        <div class="consumer-header">
+          <div class="consumer-avatar" style="background:rgba(240,74,94,.15);">🚒</div>
+          <div>
+            <div style="font-weight:700;font-size:0.95rem;color:#fff;">NDRF / State Disaster Response</div>
+            <div class="consumer-role">Access Level: Emergency Operations — Live Alert Feed Only</div>
+          </div>
+          <div style="margin-left:auto;text-align:right;">
+            <div class="stat-value" id="era-alerts" style="font-size:1.4rem;color:var(--crit);">0</div>
+            <div class="stat-sub">active critical alerts</div>
+          </div>
+        </div>
+        <div id="emergencyFeed">
+          <div class="empty-state"><span class="empty-icon">✅</span>No critical alerts. System all-clear. Run pipeline
+            to check.</div>
+        </div>
+        <h2
+          style="font-size:0.88rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 10px;">
+          📋 Verified Citizen Reports</h2>
+        <div id="emergencyReports">
+          <div class="empty-state"><span class="empty-icon">📋</span>Verified field reports will appear here.</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+         PAGE: Admin
+    ══════════════════════════════════════════════ -->
+      <div class="page" id="page-admin">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">🛡 Admin — System View</h1>
+            <div class="page-sub">Full pipeline visibility — all records, buffer stats, system health</div>
+          </div>
+        </div>
+        <div class="consumer-header">
+          <div class="consumer-avatar" style="background:rgba(77,184,255,.12);">🛡</div>
+          <div>
+            <div style="font-weight:700;font-size:0.95rem;color:#fff;">Platform Administrator</div>
+            <div class="consumer-role">Access Level: Full System — All Layers + Raw Data</div>
+          </div>
+        </div>
+        <div class="grid-4-stat">
+          <div class="stat-card" style="--accent:var(--blue)">
+            <div class="stat-label">Total APIs</div>
+            <div class="stat-value" id="adm-apis">6</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--amber)">
+            <div class="stat-label">Bronze</div>
+            <div class="stat-value" id="adm-bronze">0</div>
+          </div>
+          <div class="stat-card" style="--accent:#aab5c8">
+            <div class="stat-label">Silver</div>
+            <div class="stat-value" id="adm-silver">0</div>
+          </div>
+          <div class="stat-card" style="--accent:var(--gold)">
+            <div class="stat-label">Gold</div>
+            <div class="stat-value" id="adm-gold">0</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🔧 System Health</span>
+            <span id="sysHealth" class="badge connected">NOMINAL</span>
+          </div>
+          <div id="adminHealthBody">
+            <div class="empty-state" style="padding:20px 0">Run pipeline to show health.</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px;">
+          <div class="card-header"><span class="card-title">📋 Full Pipeline Log</span></div>
+          <div class="log-panel" id="adminLog">Awaiting pipeline run…</div>
+        </div>
+      </div>
+
+    </main><!-- /main-content -->
+  </div><!-- /app-shell -->
+
+  <script type="module">
+    import {
+      INDIA_STATES, WEATHER_TAGS,
+      fetchAllWeather, fetchMultiSourceSocialPosts, verifyReport
+    } from './adapters.js';
+    import { createSocialReportRecord } from './schema.js';
+    import { runPipeline } from './pipeline.js';
+
+    // ── State ──────────────────────────────────────────────────────────
+    let state = {
+      loc: INDIA_STATES[0],
+      telemetry: [],
+      socialPosts: [],
+      citizenReports: [],
+      pipeline: null,
+      currentTag: 'IMD',
+      allAlerts: []
+    };
+
+    // ── Navigation ──────────────────────────────────────────────────────
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        item.classList.add('active');
+        const page = item.dataset.page;
+        document.getElementById(`page-${page}`)?.classList.add('active');
+      });
+    });
+
+    // ── Clock ───────────────────────────────────────────────────────────
+    function updateClock() {
+      document.getElementById('navClock').textContent = new Date().toLocaleTimeString('en-IN');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ── Populate location selects ────────────────────────────────────────
+    function buildStateSelects() {
+      const sel = document.getElementById('globalStateSelect');
+      INDIA_STATES.forEach((loc, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = `${loc.city} — ${loc.state}`;
+        sel.appendChild(opt);
+      });
+      sel.addEventListener('change', () => {
+        state.loc = INDIA_STATES[+sel.value];
+        document.getElementById('citizenLocation').value = state.loc.city;
+      });
+      document.getElementById('citizenLocation').value = state.loc.city;
+    }
+
+    // ── Hashtag pills ────────────────────────────────────────────────────
+    function buildTagPills() {
+      const bar = document.getElementById('socialTagBar');
+      WEATHER_TAGS.forEach(tag => {
+        const btn = document.createElement('button');
+        btn.className = `tag-pill${tag === state.currentTag ? ' active' : ''}`;
+        btn.textContent = `#${tag}`;
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tag-pill').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.currentTag = tag;
+          loadSocialFeed(tag);
+        });
+        bar.appendChild(btn);
+      });
+    }
+
+    // ── Pipeline stages helper ───────────────────────────────────────────
+    function setStage(id, cls) {
+      const el = document.getElementById(id);
+      el.classList.remove('active', 'done', 'error');
+      if (cls) el.classList.add(cls);
+    }
+    function resetStages() {
+      ['ps-collect', 'ps-ingest', 'ps-bronze', 'ps-silver', 'ps-enrich', 'ps-gold', 'ps-serve'].forEach(id => setStage(id, ''));
+    }
+
+    // ── Severity colour helper ───────────────────────────────────────────
+    function sevIcon(sev) {
+      return { CRITICAL: '🔴', HIGH: '🟠', MODERATE: '🟡', LOW: '🟢' }[sev] || '⚪';
+    }
+    function alertIcon(level) {
+      return { CRITICAL: '🔴', HIGH: '🟠', MODERATE: '🟡', LOW: '🟢' }[level] || '⚪';
+    }
+
+    // ── Run pipeline ─────────────────────────────────────────────────────
+    async function runFullPipeline() {
+      const btn = document.getElementById('globalFetchBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Running…';
+      resetStages();
+
+      // Stage 1: Collect
+      setStage('ps-collect', 'active');
+      document.getElementById('pipelineLog').innerHTML = '<div class="log-line"><span class="ls-ingest">[COLLECT]</span> Fetching live weather telemetry…</div>';
+
+      const [weatherRaw, socialRaw] = await Promise.all([
+        fetchAllWeather(state.loc),
+        fetchMultiSourceSocialPosts(state.currentTag)
+      ]);
+      state.telemetry = weatherRaw;
+      state.socialPosts = socialRaw;
+      setStage('ps-collect', 'done');
+
+      // Cross-verify citizen reports with fresh telemetry
+      state.citizenReports = state.citizenReports.map(rep => ({
+        ...rep,
+        verification: verifyReport(rep, state.telemetry)
+      }));
+
+      setStage('ps-ingest', 'active');
+      setStage('ps-bronze', 'active');
+
+      // Run pipeline engine
+      const allSocial = [...state.socialPosts, ...state.citizenReports];
+      const result = await runPipeline(weatherRaw, allSocial);
+      state.pipeline = result;
+
+      setStage('ps-ingest', 'done');
+      setStage('ps-bronze', 'done');
+      setStage('ps-silver', 'done');
+      setStage('ps-enrich', 'done');
+      setStage('ps-gold', 'done');
+      setStage('ps-serve', 'done');
+
+      // Collect all alerts
+      state.allAlerts = [];
+      result.gold.forEach(gr => {
+        gr.alerts.forEach(al => {
+          state.allAlerts.push({ ...al, city: gr.location.city, at: gr._aggregatedAt });
+        });
+      });
+
+      renderAllPages(result);
+
+      btn.disabled = false;
+      btn.innerHTML = '▶ Run Pipeline';
+    }
+
+    // ── Render all pages ─────────────────────────────────────────────────
+    function renderAllPages(result) {
+      renderOverview(result);
+      renderCollection();
+      renderIngestion(result);
+      renderPreprocessing(result);
+      renderEnrich(result);
+      renderAlerts(result);
+      renderAnalyst(result);
+      renderEmergency(result);
+      renderAdmin(result);
+    }
+
+    // ── Overview ──────────────────────────────────────────────────────────
+    function renderOverview(result) {
+      const connected = state.telemetry.filter(r => r.status === 'connected').length;
+      const bCnt = result.bronze.weather.length + result.bronze.social.length;
+      const sCnt = result.silver.weather.length + result.silver.social.length;
+      const gCnt = result.gold.length;
+      const alCnt = state.allAlerts.length;
+      const verCnt = result.silver.social.filter(r => r.verification?.status === 'VERIFIED').length;
+      const topGold = result.gold[0];
+      const sev = topGold?.severity || 'LOW';
+
+      document.getElementById('ov-apis').textContent = connected;
+      document.getElementById('ov-bronze').textContent = bCnt;
+      document.getElementById('ov-silver').textContent = sCnt;
+      document.getElementById('ov-gold').textContent = gCnt;
+      document.getElementById('ov-alerts').textContent = alCnt;
+      document.getElementById('ov-verified').textContent = verCnt;
+      document.getElementById('ov-severity').innerHTML = `<span class="badge ${sev.toLowerCase()}">${sevIcon(sev)} ${sev}</span>`;
+      document.getElementById('ov-time').textContent = new Date().toLocaleTimeString('en-IN');
+
+      // Gold summary
+      const goldArea = document.getElementById('goldSummaryArea');
+      if (result.gold.length === 0) {
+        goldArea.innerHTML = '<div class="empty-state"><span class="empty-icon">🟡</span>No gold records yet.</div>';
+      } else {
+        goldArea.innerHTML = result.gold.map(gr => renderGoldCard(gr)).join('');
+      }
+
+      // Log
+      const logEl = document.getElementById('pipelineLog');
+      logEl.innerHTML = result.log.map(l => {
+        const cls = { INGEST: 'ls-ingest', PREPROCESS: 'ls-preprocess', ENRICH_VERIFY: 'ls-enrich', COMPLETE: 'ls-complete' }[l.stage] || '';
+        return `<div class="log-line"><span class="${cls}">[${l.stage}]</span> <span style="color:var(--dim)">${l.at}</span> — ${l.msg}</div>`;
+      }).join('');
+    }
+
+    function renderGoldCard(gr) {
+      const e = gr.enrichment || {};
+      const alertsHtml = gr.alerts.length
+        ? gr.alerts.map(a => `<div class="alert-item ${a.level}" style="margin-bottom:4px;padding:7px 10px;">
+        <span>${alertIcon(a.level)}</span><div class="alert-body"><div class="alert-title">${a.msg}</div></div>
+      </div>`).join('')
+        : `<div style="color:var(--green);font-size:0.78rem;">✅ No alerts — conditions nominal</div>`;
+
+      const fmt = (v, unit = '') => v != null ? `${typeof v === 'number' ? v.toFixed(1) : v}${unit}` : '—';
+
+      return `<div class="gold-card">
+    <div class="gold-city">${gr.location.city}</div>
+    <div class="gold-state">${gr.location.state}</div>
+    <div style="margin-bottom:10px;">
+      <span class="badge ${gr.severity.toLowerCase()}">${sevIcon(gr.severity)} ${gr.severity}</span>
+      <span class="badge gold" style="margin-left:6px;">GOLD</span>
+      <span style="font-size:0.72rem;color:var(--muted);margin-left:8px;">${gr.silverRecordCount} silver records</span>
+    </div>
+    <div class="gold-metrics">
+      <div class="gold-metric"><div class="gold-metric-val">${fmt(e.maxRain, ' mm')}</div><div class="gold-metric-lbl">Max Rain</div></div>
+      <div class="gold-metric"><div class="gold-metric-val">${fmt(e.maxWind, ' km/h')}</div><div class="gold-metric-lbl">Max Gust</div></div>
+      <div class="gold-metric"><div class="gold-metric-val">${fmt(e.maxWave, ' m')}</div><div class="gold-metric-lbl">Max Wave</div></div>
+      <div class="gold-metric"><div class="gold-metric-val">${fmt(e.maxRiver, ' m³/s')}</div><div class="gold-metric-lbl">River Flow</div></div>
+      <div class="gold-metric"><div class="gold-metric-val">${fmt(e.maxTemp, ' °C')}</div><div class="gold-metric-lbl">Max Temp</div></div>
+      <div class="gold-metric"><div class="gold-metric-val">${e.apiCount || '—'}</div><div class="gold-metric-lbl">APIs Live</div></div>
+      <div class="gold-metric"><div class="gold-metric-val">${e.verifiedReports}/${e.totalReports}</div><div class="gold-metric-lbl">Reports OK</div></div>
+    </div>
+    ${alertsHtml}
+  </div>`;
+    }
+
+    // ── Collection ────────────────────────────────────────────────────────
+    function renderCollection() {
+      const cards = document.getElementById('apiCards');
+      const tbody = document.getElementById('matrixBody');
+      if (!state.telemetry.length) return;
+
+      cards.innerHTML = state.telemetry.map(rec => {
+        const isOk = rec.status === 'connected';
+        const d = rec.disaster_metrics || {};
+        const gm = rec.general_metrics || {};
+        const aqiClass = gm.aqi > 200 ? 'crit' : gm.aqi > 100 ? 'warn' : '';
+        return `<div class="card">
+      <div class="card-header">
+        <span class="card-title" style="font-size:0.82rem;">${rec.source}</span>
+        <span class="badge ${rec.status}">${isOk ? 'CONNECTED' : 'NOT CONNECTED'}</span>
+      </div>
+      ${isOk ? `
+        <div class="metric-row"><span class="metric-label">🌧 Rainfall</span><span class="metric-val ${d.rain_mm > 10 ? 'warn' : ''}">${d.rain_mm != null ? d.rain_mm + ' mm' : '—'}</span></div>
+        <div class="metric-row"><span class="metric-label">🌊 River Flow</span><span class="metric-val ${d.river_discharge_m3s > 400 ? 'crit' : ''}">${d.river_discharge_m3s != null ? d.river_discharge_m3s + ' m³/s' : '—'}</span></div>
+        <div class="metric-row"><span class="metric-label">🌊 Wave Height</span><span class="metric-val">${d.wave_height_m != null ? d.wave_height_m + ' m' : rec.condition || '—'}</span></div>
+        <div class="metric-row"><span class="metric-label">💨 Wind Gust</span><span class="metric-val">${d.wind_gust_kmh != null ? d.wind_gust_kmh + ' km/h' : '—'}</span></div>
+        <div class="metric-row"><span class="metric-label">🌡 Temperature</span><span class="metric-val ${d.temp_c > 40 ? 'crit' : ''}">${d.temp_c != null ? d.temp_c + ' °C' : '—'}</span></div>
+        <div class="metric-row"><span class="metric-label">🔽 Pressure</span><span class="metric-val">${d.pressure_hpa != null ? d.pressure_hpa + ' hPa' : '—'}</span></div>
+        ${gm.aqi != null ? `<div class="metric-row"><span class="metric-label">🌫 AQI</span><span class="metric-val ${aqiClass}">${gm.aqi}</span></div>` : ''}
+        ${rec.alerts?.length ? `<div style="margin-top:6px;">${rec.alerts.map(a => `<span class="badge high" style="font-size:0.62rem;">${a}</span>`).join(' ')}</div>` : ''}
+      ` : `<div class="err-box">⚠️ ${rec.error}</div>`}
+    </div>`;
+      }).join('');
+
+      tbody.innerHTML = state.telemetry.map(rec => {
+        const isOk = rec.status === 'connected';
+        const d = rec.disaster_metrics || {};
+        const gm = rec.general_metrics || {};
+        return `<tr>
+      <td><strong>${rec.source}</strong></td>
+      <td><span class="badge ${rec.status}">${isOk ? 'CONNECTED' : 'NOT CONNECTED'}</span></td>
+      <td class="mono">${d.rain_mm != null ? d.rain_mm : '—'}</td>
+      <td class="mono">${d.river_discharge_m3s != null ? d.river_discharge_m3s : '—'}</td>
+      <td class="mono">${d.wave_height_m != null ? d.wave_height_m : '—'}</td>
+      <td class="mono">${d.wind_gust_kmh != null ? d.wind_gust_kmh : '—'}</td>
+      <td class="mono">${d.temp_c != null ? d.temp_c : '—'}</td>
+      <td class="mono">${d.pressure_hpa != null ? d.pressure_hpa : '—'}</td>
+      <td class="mono">${gm.aqi != null ? gm.aqi : '—'}</td>
+    </tr>`;
+      }).join('');
+    }
+
+    // ── Social ────────────────────────────────────────────────────────────
+    async function loadSocialFeed(tag = state.currentTag) {
+      const feed = document.getElementById('socialFeed');
+      feed.innerHTML = `<div class="empty-state"><span class="spinner"></span> Querying #${tag}…</div>`;
+      const posts = await fetchMultiSourceSocialPosts(tag);
+      state.socialPosts = posts;
+      posts.forEach(p => { p.location = state.loc; p.verification = verifyReport(p, state.telemetry); });
+      renderSocialFeed(posts);
+    }
+
+    function renderSocialFeed(posts) {
+      const feed = document.getElementById('socialFeed');
+      if (!posts.length) {
+        feed.innerHTML = '<div class="empty-state"><span class="empty-icon">#</span>No posts found for this tag. Try another.</div>';
+        return;
+      }
+      feed.innerHTML = posts.map(p => renderReportCard(p)).join('');
+    }
+
+    function renderReportCard(rep) {
+      const v = rep.verification || {};
+      const isVer = v.status === 'VERIFIED';
+      const isFake = v.status === 'SUSPICIOUS_FAKE';
+      const bannerCls = isVer ? 'VERIFIED' : isFake ? 'SUSPICIOUS_FAKE' : 'PENDING';
+      const icon = isVer ? '🟢' : isFake ? '🔴' : '🟡';
+      const label = isVer ? 'VERIFIED' : isFake ? 'SUSPICIOUS / FAKE' : 'PENDING';
+      return `<div class="report-card">
+    <div class="report-meta">
+      <span><strong>${rep.author}</strong> via ${rep.source}</span>
+      <span>📍 ${rep.location?.city || 'India'} • ${new Date(rep.timestamp).toLocaleTimeString('en-IN')}</span>
+    </div>
+    <div class="report-text">"${rep.text || '(no text)'}"</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      ${(rep.hashtags || []).map(h => `<span class="tag-chip">${h}</span>`).join('')}
+      <span class="cat-chip">${rep.category}</span>
+    </div>
+    <div class="verify-banner ${bannerCls}">
+      <div class="verify-banner-left">
+        <strong>${icon} ${label}</strong>
+        <div style="font-size:0.73rem;color:var(--muted);margin-top:2px;">${v.reason || ''}</div>
+      </div>
+      <span class="verify-confidence">${v.confidence}%</span>
+    </div>
+  </div>`;
+    }
+
+    // ── Citizen Reporter ─────────────────────────────────────────────────
+    function setupCitizenForm() {
+      document.querySelectorAll('.sample-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById('citizenText').value = `${btn.dataset.text} in ${state.loc.city}`;
+          document.getElementById('citizenCategory').value = btn.dataset.cat;
+        });
+      });
+
+      document.getElementById('submitCitizenBtn').addEventListener('click', () => {
+        const text = document.getElementById('citizenText').value.trim();
+        if (!text) return alert('Please enter report text.');
+        const cat = document.getElementById('citizenCategory').value;
+        const tags = (text.match(/#[a-z0-9_]+/gi) || ['#IMD', '#Weather']);
+        const rep = createSocialReportRecord({
+          source: 'Citizen Emergency Reporter',
+          author: '@citizen_reporter',
+          text, hashtags: tags, category: cat, location: state.loc,
+          verification: verifyReport({ text, hashtags: tags, category: cat, location: state.loc }, state.telemetry)
+        });
+        state.citizenReports.unshift(rep);
+        renderCitizenFeed();
+        document.getElementById('citizenText').value = '';
+      });
+    }
+
+    function renderCitizenFeed() {
+      const feed = document.getElementById('citizenFeed');
+      if (!state.citizenReports.length) {
+        feed.innerHTML = '<div class="empty-state"><span class="empty-icon">📸</span>No reports submitted yet.</div>';
+        return;
+      }
+      feed.innerHTML = state.citizenReports.map(rep => renderReportCard(rep)).join('');
+    }
+
+    // ── Ingestion / Bronze ────────────────────────────────────────────────
+    function renderIngestion(result) {
+      const wStats = result.bufferStats.weather;
+      const sStats = result.bufferStats.social;
+      document.getElementById('buf-weather').textContent = wStats.ingested || 0;
+      document.getElementById('buf-social').textContent = sStats.ingested || 0;
+      document.getElementById('buf-total').textContent = (wStats.ingested || 0) + (sStats.ingested || 0);
+      document.getElementById('buf-errors').textContent = (wStats.errors || 0) + (sStats.errors || 0);
+
+      document.getElementById('adm-bronze').textContent = (wStats.ingested || 0) + (sStats.ingested || 0);
+
+      const tbody = document.getElementById('bronzeBody');
+      const allBronze = [...result.bronze.weather, ...result.bronze.social];
+      tbody.innerHTML = allBronze.map(b => `<tr>
+    <td class="mono" style="font-size:0.68rem;">${b._id}</td>
+    <td><span class="badge ${b._sourceType === 'WEATHER_API' ? 'connected' : 'pending'}">${b._sourceType}</span></td>
+    <td>${b.raw?.source || b.raw?.author || '—'}</td>
+    <td><span class="badge ${b.raw?.status || 'pending'}">${b.raw?.status || 'N/A'}</span></td>
+    <td class="mono" style="font-size:0.7rem;">${new Date(b._ingestedAt).toLocaleTimeString('en-IN')}</td>
+    <td><span class="badge bronze">BRONZE</span></td>
+  </tr>`).join('');
+    }
+
+    // ── Preprocessing / Silver ────────────────────────────────────────────
+    function renderPreprocessing(result) {
+      const sw = result.silver.weather.length;
+      const ss = result.silver.social.length;
+      const total = sw + ss;
+      const connected = result.silver.weather.filter(r => r.status === 'connected').length;
+
+      document.getElementById('sil-weather').textContent = sw;
+      document.getElementById('sil-social').textContent = ss;
+      document.getElementById('sil-pass').textContent = total ? Math.round((connected / sw) * 100) + '%' : '—';
+      document.getElementById('sil-nulls').textContent = '✓';
+      document.getElementById('adm-silver').textContent = total;
+
+      const tbody = document.getElementById('silverBody');
+      tbody.innerHTML = result.silver.weather.map(r => {
+        const d = r.disaster_metrics || {};
+        return `<tr>
+      <td class="mono" style="font-size:0.68rem;">${r._bronzeId?.slice(0, 16)}…</td>
+      <td>${r.source}</td>
+      <td><span class="badge ${r.status}">${r.status}</span></td>
+      <td class="mono">${d.rain_mm != null ? d.rain_mm : '—'}</td>
+      <td class="mono">${d.river_discharge_m3s != null ? d.river_discharge_m3s : '—'}</td>
+      <td class="mono">${d.wind_gust_kmh != null ? d.wind_gust_kmh : '—'}</td>
+      <td class="mono">${d.temp_c != null ? d.temp_c : '—'}</td>
+      <td class="mono" style="font-size:0.7rem;">${new Date(r._processedAt).toLocaleTimeString('en-IN')}</td>
+      <td><span class="badge silver">SILVER</span></td>
+    </tr>`;
+      }).join('');
+    }
+
+    // ── Enrich & Verify ───────────────────────────────────────────────────
+    function renderEnrich(result) {
+      const area = document.getElementById('enrichGoldCards');
+      if (!result.gold.length) {
+        area.innerHTML = '<div class="empty-state"><span class="empty-icon">🔬</span>No gold records.</div>';
+        return;
+      }
+      area.innerHTML = result.gold.map(gr => renderGoldCard(gr)).join('');
+      document.getElementById('adm-gold').textContent = result.gold.length;
+    }
+
+    // ── Alerts ────────────────────────────────────────────────────────────
+    function renderAlerts(result) {
+      const alerts = state.allAlerts;
+      const crit = alerts.filter(a => a.level === 'CRITICAL');
+      const high = alerts.filter(a => a.level === 'HIGH');
+      const mod = alerts.filter(a => a.level === 'MODERATE');
+      const low = alerts.filter(a => a.level === 'LOW');
+
+      document.getElementById('al-crit').textContent = crit.length;
+      document.getElementById('al-high').textContent = high.length;
+      document.getElementById('al-mod').textContent = mod.length;
+      document.getElementById('al-low').textContent = low.length;
+
+      const feed = document.getElementById('alertFeed');
+      if (!alerts.length) {
+        feed.innerHTML = '<div class="alert-item LOW"><span class="alert-icon">✅</span><div class="alert-body"><div class="alert-title">All Clear — No alerts generated</div><div class="alert-desc">All meteorological parameters within safe thresholds.</div></div></div>';
+        return;
+      }
+      feed.innerHTML = [...crit, ...high, ...mod, ...low].map(al => `
+    <div class="alert-item ${al.level}">
+      <span class="alert-icon">${alertIcon(al.level)}</span>
+      <div class="alert-body">
+        <div class="alert-title">${al.msg}</div>
+        <div class="alert-desc">📍 ${al.city} — Code: <code style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;">${al.code}</code></div>
+        <div class="alert-time">${new Date(al.at).toLocaleTimeString('en-IN')}</div>
+      </div>
+      <span class="badge ${al.level.toLowerCase()}">${al.level}</span>
+    </div>
+  `).join('');
+    }
+
+    document.getElementById('clearAlertsBtn').addEventListener('click', () => {
+      state.allAlerts = [];
+      document.getElementById('alertFeed').innerHTML = '<div class="empty-state"><span class="empty-icon">🚨</span>Alerts cleared.</div>';
+      ['al-crit', 'al-high', 'al-mod', 'al-low'].forEach(id => document.getElementById(id).textContent = '0');
+    });
+
+    // ── Analyst Console ───────────────────────────────────────────────────
+    function renderAnalyst(result) {
+      const connected = state.telemetry.filter(r => r.status === 'connected');
+      const dm = connected.map(r => r.disaster_metrics || {});
+      const avg = (arr) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2) : '—';
+      const max = (arr) => arr.length ? Math.max(...arr).toFixed(2) : '—';
+      const vals = key => dm.map(d => d[key]).filter(v => v != null);
+
+      document.getElementById('analystTelemetry').innerHTML = `
+    <div class="metric-row"><span class="metric-label">APIs Connected</span><span class="metric-val">${connected.length} / ${state.telemetry.length}</span></div>
+    <div class="metric-row"><span class="metric-label">Avg Rain</span><span class="metric-val">${avg(vals('rain_mm'))} mm</span></div>
+    <div class="metric-row"><span class="metric-label">Max Gust</span><span class="metric-val">${max(vals('wind_gust_kmh'))} km/h</span></div>
+    <div class="metric-row"><span class="metric-label">Max Wave</span><span class="metric-val">${max(vals('wave_height_m'))} m</span></div>
+    <div class="metric-row"><span class="metric-label">Max Temp</span><span class="metric-val">${max(vals('temp_c'))} °C</span></div>
+    <div class="metric-row"><span class="metric-label">Max River</span><span class="metric-val">${max(vals('river_discharge_m3s'))} m³/s</span></div>
+    <div class="metric-row"><span class="metric-label">Total Alerts</span><span class="metric-val">${state.allAlerts.length}</span></div>
+  `;
+
+      const allSocial = result.silver.social;
+      const ver = allSocial.filter(r => r.verification?.status === 'VERIFIED').length;
+      const fake = allSocial.filter(r => r.verification?.status === 'SUSPICIOUS_FAKE').length;
+      const pend = allSocial.filter(r => r.verification?.status === 'PENDING').length;
+      document.getElementById('analystSocial').innerHTML = `
+    <div class="metric-row"><span class="metric-label">Total Reports</span><span class="metric-val">${allSocial.length}</span></div>
+    <div class="metric-row"><span class="metric-label">✅ Verified</span><span class="metric-val" style="color:var(--green)">${ver}</span></div>
+    <div class="metric-row"><span class="metric-label">🔴 Suspicious/Fake</span><span class="metric-val" style="color:var(--red)">${fake}</span></div>
+    <div class="metric-row"><span class="metric-label">🟡 Pending</span><span class="metric-val" style="color:var(--amber)">${pend}</span></div>
+    <div class="metric-row"><span class="metric-label">Citizen Reports</span><span class="metric-val">${state.citizenReports.length}</span></div>
+    <div class="metric-row"><span class="metric-label">Social Posts</span><span class="metric-val">${state.socialPosts.length}</span></div>
+  `;
+
+      document.getElementById('analystGold').innerHTML = result.gold.length
+        ? result.gold.map(gr => renderGoldCard(gr)).join('')
+        : '<div class="empty-state" style="padding:20px">No gold records.</div>';
+    }
+
+    // Export JSON
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      if (!state.pipeline) return alert('Run the pipeline first.');
+      const blob = new Blob([JSON.stringify(state.pipeline, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'nwbdap-pipeline-output.json'; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // ── Emergency Response ────────────────────────────────────────────────
+    function renderEmergency(result) {
+      const critAlerts = state.allAlerts.filter(a => a.level === 'CRITICAL' || a.level === 'HIGH');
+      document.getElementById('era-alerts').textContent = critAlerts.filter(a => a.level === 'CRITICAL').length;
+
+      const feed = document.getElementById('emergencyFeed');
+      if (!critAlerts.length) {
+        feed.innerHTML = '<div class="alert-item LOW"><span class="alert-icon">✅</span><div class="alert-body"><div class="alert-title">All Clear — No critical/high alerts</div></div></div>';
+      } else {
+        feed.innerHTML = critAlerts.map(al => `
+      <div class="alert-item ${al.level}">
+        <span class="alert-icon">${alertIcon(al.level)}</span>
+        <div class="alert-body">
+          <div class="alert-title">${al.msg}</div>
+          <div class="alert-desc">📍 ${al.city} — <span class="badge ${al.level.toLowerCase()}">${al.level}</span></div>
+          <div class="alert-time">Issued: ${new Date(al.at).toLocaleString('en-IN')}</div>
+        </div>
+      </div>`).join('');
+      }
+
+      const repFeed = document.getElementById('emergencyReports');
+      const verReports = [...state.socialPosts, ...state.citizenReports].filter(r => r.verification?.status === 'VERIFIED');
+      repFeed.innerHTML = verReports.length
+        ? verReports.map(r => renderReportCard(r)).join('')
+        : '<div class="empty-state"><span class="empty-icon">📋</span>No verified field reports.</div>';
+    }
+
+    // ── Admin ─────────────────────────────────────────────────────────────
+    function renderAdmin(result) {
+      const connected = state.telemetry.filter(r => r.status === 'connected').length;
+      const health = connected >= 4 ? 'NOMINAL' : connected >= 2 ? 'DEGRADED' : 'CRITICAL';
+      const healthBadge = document.getElementById('sysHealth');
+      healthBadge.className = `badge ${connected >= 4 ? 'connected' : connected >= 2 ? 'moderate' : 'not_connected'}`;
+      healthBadge.textContent = health;
+
+      document.getElementById('adminHealthBody').innerHTML = `
+    <div class="metric-row"><span class="metric-label">APIs Online</span><span class="metric-val">${connected} / 6</span></div>
+    <div class="metric-row"><span class="metric-label">Buffer: Weather</span><span class="metric-val">${result.bufferStats.weather.ingested}</span></div>
+    <div class="metric-row"><span class="metric-label">Buffer: Social</span><span class="metric-val">${result.bufferStats.social.ingested}</span></div>
+    <div class="metric-row"><span class="metric-label">Bronze Records</span><span class="metric-val">${result.bronze.weather.length + result.bronze.social.length}</span></div>
+    <div class="metric-row"><span class="metric-label">Silver Records</span><span class="metric-val">${result.silver.weather.length + result.silver.social.length}</span></div>
+    <div class="metric-row"><span class="metric-label">Gold Records</span><span class="metric-val">${result.gold.length}</span></div>
+    <div class="metric-row"><span class="metric-label">Total Alerts</span><span class="metric-val">${state.allAlerts.length}</span></div>
+  `;
+
+      const adminLog = document.getElementById('adminLog');
+      adminLog.innerHTML = result.log.map(l => {
+        const cls = { INGEST: 'ls-ingest', PREPROCESS: 'ls-preprocess', ENRICH_VERIFY: 'ls-enrich', COMPLETE: 'ls-complete' }[l.stage] || '';
+        return `<div class="log-line"><span class="${cls}">[${l.stage}]</span> ${l.at} — ${l.msg}</div>`;
+      }).join('');
+    }
+
+    // ── Social Load Button ─────────────────────────────────────────────────
+    document.getElementById('loadSocialBtn').addEventListener('click', () => loadSocialFeed(state.currentTag));
+
+    // ── Global fetch button ───────────────────────────────────────────────
+    document.getElementById('globalFetchBtn').addEventListener('click', runFullPipeline);
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    buildStateSelects();
+    buildTagPills();
+    setupCitizenForm();
+
+    // Auto-run on load
+    runFullPipeline();
+  </script>
+</body>
+
+</html>
