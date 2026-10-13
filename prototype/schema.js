@@ -7,6 +7,8 @@
 export function createWeatherRecord({
   source,
   status = 'connected',
+  isLive = false,
+  endpoint = '',
   state = '',
   city = '',
   lat = null,
@@ -28,6 +30,8 @@ export function createWeatherRecord({
   return {
     source,
     status,          // 'connected' | 'not_connected'
+    isLive,          // true if fetched live from internet API, false if simulation preset
+    endpoint,        // provider API URL
     location: { state, city, lat, lon },
     disaster_metrics: {
       rain_mm,
