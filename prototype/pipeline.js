@@ -50,6 +50,8 @@ export function preprocessBronze(bronzeRecord) {
     const cleaned = {
       source: raw.source,
       status: raw.status,
+      isLive: !!raw.isLive,
+      endpoint: raw.endpoint || '',
       location: raw.location,
       disaster_metrics: {
         rain_mm: _clamp(dm.rain_mm, 0, 500),
@@ -139,6 +141,10 @@ export function enrichAndVerify(silverWeatherRecords, silverSocialRecords) {
     else if (maxTemp >= 40) alerts.push({ code: 'HEATWAVE', level: 'HIGH', msg: `Temperature ${maxTemp.toFixed(1)} °C — Heatwave Alert` });
     if (minPress !== null && minPress < 990) alerts.push({ code: 'BAROMETRIC_DEPRESSION', level: 'HIGH', msg: `Pressure ${minPress.toFixed(0)} hPa — Depression / Cyclone Risk` });
 
+    const maxAqi = max(connected.map(r => r.general_metrics?.aqi).filter(v => v != null));
+    if (maxAqi >= 300) alerts.push({ code: 'SEVERE_AIR_QUALITY', level: 'HIGH', msg: `Air Quality Index ${maxAqi.toFixed(0)} — Severe Smog / Hazardous AQI` });
+    else if (maxAqi >= 200) alerts.push({ code: 'POOR_AIR_QUALITY', level: 'MODERATE', msg: `Air Quality Index ${maxAqi.toFixed(0)} — Poor Air Quality Alert` });
+
     // Cross-verify social reports against telemetry
     const verifiedSocial = social.map(rep => ({
       ...rep,
@@ -149,10 +155,11 @@ export function enrichAndVerify(silverWeatherRecords, silverSocialRecords) {
     // Severity score
     const critCount = alerts.filter(a => a.level === 'CRITICAL').length;
     const highCount = alerts.filter(a => a.level === 'HIGH').length;
+    const modCount = alerts.filter(a => a.level === 'MODERATE').length;
     let severity = 'LOW';
     if (critCount >= 1) severity = 'CRITICAL';
     else if (highCount >= 2) severity = 'HIGH';
-    else if (highCount >= 1 || verifiedCount > 0) severity = 'MODERATE';
+    else if (highCount >= 1 || modCount >= 1 || (alerts.length > 0 && verifiedCount > 0)) severity = 'MODERATE';
 
     const loc = connected[0]?.location || weather[0]?.location || { city, state: '', lat: null, lon: null };
 
@@ -201,7 +208,14 @@ export async function runPipeline(weatherRawRecords, socialRawRecords) {
   const ts = () => new Date().toISOString();
 
   // Stage 1: Ingest → Bronze
-  log.push({ stage: 'INGEST', at: ts(), msg: `Ingesting ${weatherRawRecords.length} weather + ${socialRawRecords.length} social records` });
+  const liveCount = weatherRawRecords.filter(r => r.isLive).length;
+  const city = weatherRawRecords[0]?.location?.city || 'Selected Region';
+  if (liveCount > 0) {
+    log.push({ stage: 'LIVE_INGEST', at: ts(), msg: `🟢 Connected to live REST endpoints for ${city} (${liveCount}/6 live APIs online)` });
+  } else {
+    log.push({ stage: 'SIM_INGEST', at: ts(), msg: `⚡ Ingested simulated scenario records for ${city}` });
+  }
+  log.push({ stage: 'INGEST', at: ts(), msg: `Ingesting ${weatherRawRecords.length} weather + ${socialRawRecords.length} community records into StreamBuffer` });
   const bronzeWeather = weatherRawRecords.map(r => weatherBuffer.push({ data: r, sourceType: 'WEATHER_API' }));
   const bronzeSocial = socialRawRecords.map(r => socialBuffer.push({ data: r, sourceType: 'SOCIAL' }));
 
